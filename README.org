@@ -1,1 +1,9 @@
 #+title: Coding things
+
+Looks like the title is ignored by Blot.
+
+* Coding things
+
+This is a blog post.
+
+** A sub-header

@@ -1,2 +1,0 @@
-# codingthings
-Coding blog
