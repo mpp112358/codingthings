@@ -1,0 +1,64 @@
+#+title: TBPEZ - Journal
+
+* What is TBPEZ
+
+** General description
+
+This is a personal project with the goal of getting a thorough understanding of Monty, the Thousand Brains Project AI Framework.
+
+** Expected outcome
+
+The expected outcome is twofold:
+- I'm able to write an experiment without consulting any tutorials.
+- A series of blog posts explaining the framework for complete newbies.
+
+** Scope
+
+- Time: a month.
+- Framework: understand the tutorials.
+
+
+
+* Resources
+
+** Information about Monty
+
+- [[https://thousandbrainsproject.readme.io][TBP Documentation]].
+- [[https://github.com/thousandbrainsproject/tbp.monty][TBP Monty Github repository]]
+
+** Blog site
+
+- [[https://blot.im][Blot]]
+
+** Python
+
+- [[https://docs.python.org/3/][Python Docs]]
+
+** Time
+
+Mon-Thu 22:30-23:30
+Sat 16:00-18:00
+Sun 20:00-21:00
+
+** Tools
+
+Everything will happend inside Emacs.
+- IDE: Emacs.
+- Text editor for blogging: Emacs.
+- Diagram drawing: plantuml or other diagramming tool for Emacs.
+
+* Plan
+
+1. Make a list of the key concepts and try and write short definitions for each one of them.
+2. Draw a diagram of the general workings of the tool.
+3. Draw a more detailed diagram of the files involved in running the first tutorial, mapping them to the key concepts.
+4. Make a list of the key classes involved mapping them to the key concepts.
+5. Draw a detailed diagram of the classes involved in running the first tutorial.
+6. Draw a map to the source files, linking them to the key concepts and classes.
+7. Create a recipe for writing an experiment.
+
+* Journal
+
+** 2024-12-27
+
+Wrote the project description, resources and plan.
