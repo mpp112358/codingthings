@@ -1,0 +1,5 @@
+#+title: Classes Vs Instances
+
+* Classes vs. Instances
+
+The question I'll try and answer here is: /What's the difference between a class and an instance of that class?/

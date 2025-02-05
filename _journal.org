@@ -50,15 +50,47 @@ Everything will happend inside Emacs.
 * Plan
 
 1. Make a list of the key concepts and try and write short definitions for each one of them.
-2. Draw a diagram of the general workings of the tool.
-3. Draw a more detailed diagram of the files involved in running the first tutorial, mapping them to the key concepts.
-4. Make a list of the key classes involved mapping them to the key concepts.
-5. Draw a detailed diagram of the classes involved in running the first tutorial.
-6. Draw a map to the source files, linking them to the key concepts and classes.
-7. Create a recipe for writing an experiment.
+2. Draw a diagram of the classes that model the basic concepts.
+3. Draw a diagram of the general workings of the tool.
+4. Draw a more detailed diagram of the files involved in running the first tutorial, mapping them to the key concepts.
+5. Make a list of the key classes involved mapping them to the key concepts.
+6. Draw a detailed diagram of the classes involved in running the first tutorial.
+7. Draw a map to the source files, linking them to the key concepts and classes.
+8. Create a recipe for writing an experiment.
 
 * Journal
 
 ** 2024-12-27
 
-Wrote the project description, resources and plan.
+- [X] Write the project description, resources and plan.
+- [X] Sign up in Blot
+- [X] Create a Github repo for the blog.
+- [X] Set up the blog automatic update process.
+- [X] Start making the list of key concepts
+
+Main take-aways:
+
+- I have understood the concept of Environment: you give an action and it gives you an observation; agents themselves are part of the environment; it keeps track of them, which allows it to produce an observation after executing an action, because it modifies the state of the agents.
+- I must clarify the notion of an agent, and its relation to sensors and motor systems. One agent <=> one motor system? Can an agent have many sensors of different types? Why does the documentation speak about distant agents and surface agents? Is it that an agent can only observe objects from a distance (eyes) or close to the surfaces (like fingers), but not both? A robot should be considered composed of many agents? I tend to think that the concept they have in mind is this: that an agent is a sensorial organ (like an eye or a finger) made up of many sensor modules (like patches in the retina or tactile points in a finger) that receive a specific type of sensory information and that move in a specific way (the movement of the eye is different than that of the finger). Or maybe the agent is the whole hand?
+- To have really clear idea of what an action is, I need to clarify the idea of an agent, because I need to know the scope of the action: which elements of the universe are affected by the action.
+
+** 2024-12-28
+
+- [X] Read all places where they talk about agents in the documentation.
+- [X] Look for the class or classes modeling an agent in the codebase.
+
+Main take-aways:
+
+- It's more clear to me that agents are not "robots" but just sensing bodies that move around in the environment.
+- There are two main types of agents: distant and surface. The first one is like a helmet with cameras mounted on it. The second one si like a finger moving on the surface of an object in the environment.
+- An agent issues an action to the environment, and receives, as response, observations for its sensors.
+- Still not clear if sensors have some movement relative to the agent.
+
+Problems:
+
+- It's really difficult to have an idea of what they have in mind while reading the docs. I tried reading the code, but it's difficult as well. I need a simple mind map that allows me to read the code understanding what's behind it.
+- Everything is connected. That's why it's really difficult to focus on one aspect without feeling a bit of anxiety that there are many other aspects which I will have to study.
+
+** 2024-12-30
+
+- [ ] Draw a mapping of concepts to classes.
