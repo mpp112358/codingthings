@@ -3,3 +3,43 @@
 * Classes vs. Instances
 
 The question I'll try and answer here is: /What's the difference between a class and an instance of that class?/
+
+** Meaning (semantics)
+
+A class is a user-defined type.
+
+A class instance is an object whose type is that class.
+
+#+begin_src python
+# This is a user-defined type of object.
+>>> class Fraction:
+...    def __init__(self, num, den):
+...        self.num = num
+...        self.den = den
+...
+>>> f1 = Fraction(1, 2)  # This is a Fraction instance (an object of type Fraction)
+>>> f2 = Fraction(2, 3)  # This is another Fraction instance (an object of type Fraction)
+>>> type(Fraction)
+<class 'type'>
+>>> type(f1)
+<class '__main__.Fraction'>
+#+end_src
+
+** Implementation
+
+Both classes and class instances are objects (as every piece of data is).
+
+Classes are *callable* objects (you can use the /function call/ operation on them), while class instances are not callable by default.
+
+#+begin_src python
+>>> Fraction(1,2)
+<__main__.Fraction object at 0x7f915abca5d0>
+>>> f1()
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+TypeError: 'Fraction' object is not callable
+#+end_src
+
+When a class is called, a new class instance is created following these steps: first, ~__new()__~ is called, passing to it the arguments passed to the call to the class; this creates an object of that class; finally, ~__init__~ is called for that newly created object.
+
+You can make a class instance callable by adding a ~__init()__~ method to it.
