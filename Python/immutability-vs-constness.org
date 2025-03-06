@@ -166,4 +166,4 @@ Generally speaking, I reckon we may say that mutability is a rare thing in Pytho
 139640455509568
 #+end_src
 
-The expression ~[4, 5, 6]~ creates a new object of type list, and the assignment binds the name ~mu~ to that new object, as we can see with the id's.
+The expression ~[4, 5, 6]~ creates a new object of type list, and the assignment binds the name ~mu~ to that new object, as we can see by the id's.

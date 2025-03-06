@@ -1,0 +1,35 @@
+
+printfuth:     file format elf64-x86-64
+
+
+Disassembly of section .init:
+
+Disassembly of section .plt:
+
+Disassembly of section .plt.got:
+
+Disassembly of section .plt.sec:
+
+Disassembly of section .text:
+
+00000000000012ed <main>:
+    12ed:	f3 0f 1e fa          	endbr64 
+    12f1:	55                   	push   %rbp
+    12f2:	48 89 e5             	mov    %rsp,%rbp
+    12f5:	bf 00 00 00 00       	mov    $0x0,%edi
+    12fa:	e8 d1 fd ff ff       	callq  10d0 <ttyname@plt>
+    12ff:	48 89 c6             	mov    %rax,%rsi
+    1302:	48 8d 05 fb 0c 00 00 	lea    0xcfb(%rip),%rax        # 2004 <_IO_stdin_used+0x4>
+    1309:	48 89 c7             	mov    %rax,%rdi
+    130c:	b8 00 00 00 00       	mov    $0x0,%eax
+    1311:	e8 9a fd ff ff       	callq  10b0 <printf@plt>
+    1316:	48 8d 05 00 0d 00 00 	lea    0xd00(%rip),%rax        # 201d <_IO_stdin_used+0x1d>
+    131d:	48 89 c7             	mov    %rax,%rdi
+    1320:	b8 00 00 00 00       	mov    $0x0,%eax
+    1325:	e8 86 fd ff ff       	callq  10b0 <printf@plt>
+    132a:	e8 ba fe ff ff       	callq  11e9 <_Z8keypressv>
+    132f:	b8 00 00 00 00       	mov    $0x0,%eax
+    1334:	5d                   	pop    %rbp
+    1335:	c3                   	retq   
+
+Disassembly of section .fini:

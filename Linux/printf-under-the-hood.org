@@ -1,0 +1,186 @@
+#+title: Printf Under The Hood
+
+* printf under the hood
+
+** The program
+
+Will look into a really simple program that prints a text on a terminal and waits until a key is pressed:
+
+#+begin_src bash :wrap src C++ :output results :results output src :exports results
+sed -n 1~1p printfuth.cpp
+#+end_src
+
+#+RESULTS:
+#+begin_src C++
+#include <bits/posix_opt.h>
+#include <cstdio>
+#include <termios.h>
+#include <unistd.h>
+
+int keypress() {
+  struct termios saved_state, new_state;
+  int c;
+  if (tcgetattr(STDIN_FILENO, &saved_state) == -1) {
+    return EOF;
+  }
+  new_state = saved_state;
+  new_state.c_cflag &= ~(ICANON | ECHO);
+  new_state.c_cc[VMIN] = 1;
+  new_state.c_cc[VTIME] = 0;
+  if (tcsetattr(STDIN_FILENO, TCSANOW, &new_state) == -1) {
+    return EOF;
+  }
+  c = getchar();
+  tcsetattr(STDIN_FILENO, TCSANOW, &saved_state);
+  return c;
+}
+
+int main() {
+  std::printf("Running on terminal: %s\n", ttyname(STDIN_FILENO));
+  std::printf("Hello, world!");
+  keypress();
+  return 0;
+}
+#+end_src
+
+** The assembler instructions
+
+First things, first. The program is compiled into this (assembler):
+
+#+begin_src bash :wrap src asm :output results :results output src :exports both
+g++ -g printfuth.cpp -o printfuth
+objdump --disassemble=main printfuth > printfuth-disassemble
+sed -n 1~1p printfuth-disassemble
+#+end_src
+
+#+RESULTS:
+#+begin_src asm
+
+printfuth:     file format elf64-x86-64
+
+
+Disassembly of section .init:
+
+Disassembly of section .plt:
+
+Disassembly of section .plt.got:
+
+Disassembly of section .plt.sec:
+
+Disassembly of section .text:
+
+00000000000012cd <main>:
+    12cd:	f3 0f 1e fa          	endbr64
+    12d1:	55                   	push   %rbp
+    12d2:	48 89 e5             	mov    %rsp,%rbp
+    12d5:	48 8d 05 28 0d 00 00 	lea    0xd28(%rip),%rax        # 2004 <_IO_stdin_used+0x4>
+    12dc:	48 89 c7             	mov    %rax,%rdi
+    12df:	b8 00 00 00 00       	mov    $0x0,%eax
+    12e4:	e8 b7 fd ff ff       	callq  10a0 <printf@plt>
+    12e9:	e8 db fe ff ff       	callq  11c9 <_Z8keypressv>
+    12ee:	b8 00 00 00 00       	mov    $0x0,%eax
+    12f3:	5d                   	pop    %rbp
+    12f4:	c3                   	retq
+
+Disassembly of section .fini:
+#+end_src
+
+It can be seen that what the program does is basically a call to ~printf~.
+
+*** What's the purpose of ~lea 0xeac(%rip),%rax~?
+
+The LEA (Load Effective Address) instruction computes the effective address of a memory location and stores it in a register.
+
+Here, it's storing the address where the string "Hello, world!" resides into the ~rax~ register. From that register it will be copied onto the ~rdi~ register, which is the one that must hold the first argument to a function called (according to the calling convention).
+
+The address is expressed as an offset from the contents of the ~rip~ register (which is the instruction pointer). As it can be seen, the resulting address is ~0x2004~, which equals ~0x12dc + 0xd28~ (the value of the ~rip~ register plus the offset ~0xd28~).
+
+The section of the executable file where the string is stored is this:
+
+#+begin_src bash :wrap src :output results :results output :exports both
+readelf -x .rodata printfuth
+#+end_src
+
+#+RESULTS:
+#+begin_src
+
+Hex dump of section '.rodata':
+  0x00002000 01000200 52756e6e 696e6720 6f6e2074 ....Running on t
+  0x00002010 65726d69 6e616c3a 2025730a 0048656c erminal: %s..Hel
+  0x00002020 6c6f2c20 776f726c 642100            lo, world!.
+
+#+end_src
+
+*** TODO How is the argument passed to ~printf~?
+
+** TODO Execution context
+
+The program is run by a shell, whose standard output is directed to a terminal window (a terminal emulator window, to be precise) on the screen.
+
+** TODO The system calls
+
+#+begin_src bash :wrap src C :output results :results output :exports both
+strace ./printfuth 2>&1 1>/dev/null
+#+end_src
+
+#+RESULTS:
+#+begin_src C
+execve("./printfuth", ["./printfuth"], 0x7ffe4b3735e0 /* 98 vars */) = 0
+brk(NULL)                               = 0x5603efb73000
+arch_prctl(0x3001 /* ARCH_??? */, 0x7ffc65b021b0) = -1 EINVAL (Invalid argument)
+access("/etc/ld.so.preload", R_OK)      = -1 ENOENT (No such file or directory)
+openat(AT_FDCWD, "/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3
+fstat(3, {st_mode=S_IFREG|0644, st_size=210189, ...}) = 0
+mmap(NULL, 210189, PROT_READ, MAP_PRIVATE, 3, 0) = 0x7f34a11d0000
+close(3)                                = 0
+openat(AT_FDCWD, "/lib/x86_64-linux-gnu/libc.so.6", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1\1\3\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0\300A\2\0\0\0\0\0"..., 832) = 832
+pread64(3, "\6\0\0\0\4\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0"..., 784, 64) = 784
+pread64(3, "\4\0\0\0\20\0\0\0\5\0\0\0GNU\0\2\0\0\300\4\0\0\0\3\0\0\0\0\0\0\0", 32, 848) = 32
+pread64(3, "\4\0\0\0\24\0\0\0\3\0\0\0GNU\0\7\2C\n\357_\243\335\2449\206V>\237\374\304"..., 68, 880) = 68
+fstat(3, {st_mode=S_IFREG|0755, st_size=2029592, ...}) = 0
+mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f34a11ce000
+pread64(3, "\6\0\0\0\4\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0"..., 784, 64) = 784
+pread64(3, "\4\0\0\0\20\0\0\0\5\0\0\0GNU\0\2\0\0\300\4\0\0\0\3\0\0\0\0\0\0\0", 32, 848) = 32
+pread64(3, "\4\0\0\0\24\0\0\0\3\0\0\0GNU\0\7\2C\n\357_\243\335\2449\206V>\237\374\304"..., 68, 880) = 68
+mmap(NULL, 2037344, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f34a0fdc000
+mmap(0x7f34a0ffe000, 1540096, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x22000) = 0x7f34a0ffe000
+mmap(0x7f34a1176000, 319488, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x19a000) = 0x7f34a1176000
+mmap(0x7f34a11c4000, 24576, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x1e7000) = 0x7f34a11c4000
+mmap(0x7f34a11ca000, 13920, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0x7f34a11ca000
+close(3)                                = 0
+arch_prctl(ARCH_SET_FS, 0x7f34a11cf540) = 0
+mprotect(0x7f34a11c4000, 16384, PROT_READ) = 0
+mprotect(0x5603c4446000, 4096, PROT_READ) = 0
+mprotect(0x7f34a1231000, 4096, PROT_READ) = 0
+munmap(0x7f34a11d0000, 210189)          = 0
+ioctl(0, TCGETS, 0x7ffc65b01f70)        = -1 ENOTTY (Inappropriate ioctl for device)
+fstat(1, {st_mode=S_IFCHR|0666, st_rdev=makedev(0x1, 0x3), ...}) = 0
+ioctl(1, TCGETS, 0x7ffc65b01940)        = -1 ENOTTY (Inappropriate ioctl for device)
+brk(NULL)                               = 0x5603efb73000
+brk(0x5603efb94000)                     = 0x5603efb94000
+ioctl(0, TCGETS, 0x7ffc65b020a0)        = -1 ENOTTY (Inappropriate ioctl for device)
+write(1, "Running on terminal: (null)\nHell"..., 41) = 41
+exit_group(0)                           = ?
++++ exited with 0 +++
+#+end_src
+
+The key system call here is ~write(1, "Hello, world!", 13)~.
+
+It writes to the file with descriptor 1, which is, by default, the standard output in Linux.
+
+** Scheme
+
+Looks like this:
+- ~printf~ makes a ~write~ syscall.
+- ~write~ syscall writes the string to file with file descriptor 1, which is, by default, the /standard output/.
+- The file descriptor 1 (~STDOUT~) is handled by a driver that controls a /device/ which is a pseudoterminal (something like ~/dev/pty/3~).
+- The pseudoterminal is connected to a terminal emulator aplication (the one we are running the command from).
+- The terminal emulator receives the characters and prints them onto its window.
+
+Still obscure parts:
+- What does it mean that the file descriptor 1 is handled by a driver that controls a pseudoterminal device?
+- How does the terminal emulator write characters on the window (how are shapes, sizes, etc., handled)?
+- What are the details about how the pseudoterminal is connected to the terminal emulator?
+- What processes are forked, exec'ed or the like for all these things to happen?
+

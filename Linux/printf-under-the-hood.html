@@ -1,0 +1,461 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2025-03-07 Fri 00:02 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Printf Under The Hood</title>
+<meta name="author" content="Manuel Pérez" />
+<meta name="generator" content="Org Mode" />
+<style type="text/css">
+  #content { max-width: 60em; margin: auto; }
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #e6e6e6;
+    border-radius: 3px;
+    background-color: #f2f2f2;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    top: -8px;
+    right: 12px;
+    padding: 3px;
+    color: #555;
+    background-color: #f2f2f299;
+  }
+  pre.src:hover:before { display: inline; margin-top: 14px;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-authinfo::before { content: 'Authinfo'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { }
+</style>
+</head>
+<body>
+<div id="content" class="content">
+<h1 class="title">Printf Under The Hood</h1>
+<div id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#orge185449">1. printf under the hood</a>
+<ul>
+<li><a href="#org7db7516">1.1. The program</a></li>
+<li><a href="#org65323c6">1.2. The assembler instructions</a>
+<ul>
+<li><a href="#org0f8dc26">1.2.1. <span class="todo TODO">TODO</span> What&rsquo;s the purpose of <code>lea 0xeac(%rip),%rax</code>?</a></li>
+<li><a href="#org0159f8b">1.2.2. <span class="todo TODO">TODO</span> How is the argument passed to <code>printf</code>?</a></li>
+</ul>
+</li>
+<li><a href="#org648ed5e">1.3. <span class="todo TODO">TODO</span> Execution context</a></li>
+<li><a href="#orgd29f70d">1.4. <span class="todo TODO">TODO</span> The system calls</a></li>
+<li><a href="#org41c96c6">1.5. Scheme</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orge185449" class="outline-2">
+<h2 id="orge185449"><span class="section-number-2">1.</span> printf under the hood</h2>
+<div class="outline-text-2" id="text-1">
+</div>
+<div id="outline-container-org7db7516" class="outline-3">
+<h3 id="org7db7516"><span class="section-number-3">1.1.</span> The program</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+Will look into a really simple program that prints a text on a terminal and waits until a key is pressed:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-C++"><span style="color: #C7B299; font-weight: bold;">#include</span> <span style="color: #8AC6F2;">&lt;</span><span style="color: #86B187;">bits/posix_opt.h</span><span style="color: #8AC6F2;">&gt;</span>
+<span style="color: #C7B299; font-weight: bold;">#include</span> <span style="color: #8AC6F2;">&lt;</span><span style="color: #86B187;">cstdio</span><span style="color: #8AC6F2;">&gt;</span>
+<span style="color: #C7B299; font-weight: bold;">#include</span> <span style="color: #8AC6F2;">&lt;</span><span style="color: #86B187;">termios.h</span><span style="color: #8AC6F2;">&gt;</span>
+<span style="color: #C7B299; font-weight: bold;">#include</span> <span style="color: #8AC6F2;">&lt;</span><span style="color: #86B187;">unistd.h</span><span style="color: #8AC6F2;">&gt;</span>
+
+<span style="color: #C7B299;">int</span> <span style="color: #EA9847;">keypress</span><span style="color: #8AC6F2;">()</span> <span style="color: #8AC6F2;">{</span>
+  <span style="color: #8AC6F2;">struct</span> <span style="color: #C7B299;">termios</span> <span style="color: #BF93C3;">saved_state</span>, <span style="color: #BF93C3;">new_state</span>;
+  <span style="color: #C7B299;">int</span> <span style="color: #BF93C3;">c</span>;
+  <span style="color: #8AC6F2;">if</span> <span style="color: #E18Cbb;">(</span>tcgetattr<span style="color: #86B187;">(</span><span style="color: #635770;">STDIN_FILENO</span>, &amp;saved_state<span style="color: #86B187;">)</span> == -<span style="color: #F6F3E8; font-weight: bold;">1</span><span style="color: #E18Cbb;">)</span> <span style="color: #E18Cbb;">{</span>
+    <span style="color: #8AC6F2;">return</span> <span style="color: #635770;">EOF</span>;
+  <span style="color: #E18Cbb;">}</span>
+  new_state = saved_state;
+  new_state.c_cflag &amp;= ~<span style="color: #E18Cbb;">(</span><span style="color: #635770;">ICANON</span> | <span style="color: #635770;">ECHO</span><span style="color: #E18Cbb;">)</span>;
+  new_state.c_cc<span style="color: #E18Cbb;">[</span><span style="color: #635770;">VMIN</span><span style="color: #E18Cbb;">]</span> = <span style="color: #F6F3E8; font-weight: bold;">1</span>;
+  new_state.c_cc<span style="color: #E18Cbb;">[</span><span style="color: #635770;">VTIME</span><span style="color: #E18Cbb;">]</span> = <span style="color: #F6F3E8; font-weight: bold;">0</span>;
+  <span style="color: #8AC6F2;">if</span> <span style="color: #E18Cbb;">(</span>tcsetattr<span style="color: #86B187;">(</span><span style="color: #635770;">STDIN_FILENO</span>, <span style="color: #635770;">TCSANOW</span>, &amp;new_state<span style="color: #86B187;">)</span> == -<span style="color: #F6F3E8; font-weight: bold;">1</span><span style="color: #E18Cbb;">)</span> <span style="color: #E18Cbb;">{</span>
+    <span style="color: #8AC6F2;">return</span> <span style="color: #635770;">EOF</span>;
+  <span style="color: #E18Cbb;">}</span>
+  c = getchar<span style="color: #E18Cbb;">()</span>;
+  tcsetattr<span style="color: #E18Cbb;">(</span><span style="color: #635770;">STDIN_FILENO</span>, <span style="color: #635770;">TCSANOW</span>, &amp;saved_state<span style="color: #E18Cbb;">)</span>;
+  <span style="color: #8AC6F2;">return</span> c;
+<span style="color: #8AC6F2;">}</span>
+
+<span style="color: #C7B299;">int</span> <span style="color: #EA9847;">main</span><span style="color: #8AC6F2;">()</span> <span style="color: #8AC6F2;">{</span>
+  <span style="color: #635770;">std</span>::printf<span style="color: #E18Cbb;">(</span><span style="color: #86B187;">"Running on terminal: %s\n"</span>, ttyname<span style="color: #86B187;">(</span><span style="color: #635770;">STDIN_FILENO</span><span style="color: #86B187;">)</span><span style="color: #E18Cbb;">)</span>;
+  <span style="color: #635770;">std</span>::printf<span style="color: #E18Cbb;">(</span><span style="color: #86B187;">"Hello, world!"</span><span style="color: #E18Cbb;">)</span>;
+  keypress<span style="color: #E18Cbb;">()</span>;
+  <span style="color: #8AC6F2;">return</span> <span style="color: #F6F3E8; font-weight: bold;">0</span>;
+<span style="color: #8AC6F2;">}</span>
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org65323c6" class="outline-3">
+<h3 id="org65323c6"><span class="section-number-3">1.2.</span> The assembler instructions</h3>
+<div class="outline-text-3" id="text-1-2">
+<p>
+First things, first. The program is compiled into this (assembler):
+</p>
+
+<div class="org-src-container">
+<pre class="src src-bash">g++ -g printfuth.cpp -o printfuth
+objdump --disassemble=main printfuth &gt; printfuth-disassemble
+sed -n 1~1p printfuth-disassemble
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-asm">
+<span style="color: #EA9847;">printfuth</span>:     <span style="color: #8AC6F2;">file</span> format elf64-x86-64
+
+
+<span style="color: #EA9847;">Disassembly</span> <span style="color: #8AC6F2;">of</span> section .init:
+
+<span style="color: #EA9847;">Disassembly</span> <span style="color: #8AC6F2;">of</span> section .plt:
+
+<span style="color: #EA9847;">Disassembly</span> <span style="color: #8AC6F2;">of</span> section .plt.got:
+
+<span style="color: #EA9847;">Disassembly</span> <span style="color: #8AC6F2;">of</span> section .plt.sec:
+
+<span style="color: #EA9847;">Disassembly</span> <span style="color: #8AC6F2;">of</span> section .text:
+
+<span style="color: #EA9847;">00000000000012ed</span> &lt;main&gt;:
+    <span style="color: #8AC6F2;">12ed</span>:   f3 0f 1e fa             endbr64 
+    <span style="color: #8AC6F2;">12f1</span>:   <span style="color: #F6F3E8; font-weight: bold;">55</span>                      push   <span style="color: #BF93C3;">%rbp</span>
+    <span style="color: #8AC6F2;">12f2</span>:   <span style="color: #F6F3E8; font-weight: bold;">48</span> <span style="color: #F6F3E8; font-weight: bold;">89</span> e5                mov    <span style="color: #BF93C3;">%rsp</span>,<span style="color: #BF93C3;">%rbp</span>
+    <span style="color: #8AC6F2;">12f5</span>:   bf <span style="color: #F6F3E8; font-weight: bold;">00</span> <span style="color: #F6F3E8; font-weight: bold;">00</span> <span style="color: #F6F3E8; font-weight: bold;">00</span> <span style="color: #F6F3E8; font-weight: bold;">00</span>          mov    $0x0,<span style="color: #BF93C3;">%edi</span>
+    <span style="color: #8AC6F2;">12fa</span>:   e8 d1 fd ff ff          callq  10d0 <a href="mailto:ttyname%40plt">&lt;ttyname@plt&gt;</a>
+    <span style="color: #8AC6F2;">12ff</span>:   <span style="color: #F6F3E8; font-weight: bold;">48</span> <span style="color: #F6F3E8; font-weight: bold;">89</span> c6                mov    <span style="color: #BF93C3;">%rax</span>,<span style="color: #BF93C3;">%rsi</span>
+    <span style="color: #F6F3E8; font-weight: bold;">1302</span>:   <span style="color: #F6F3E8; font-weight: bold;">48</span> 8d <span style="color: #F6F3E8; font-weight: bold;">05</span> fb 0c <span style="color: #F6F3E8; font-weight: bold;">00</span> <span style="color: #F6F3E8; font-weight: bold;">00</span>    lea    0xcfb(<span style="color: #BF93C3;">%rip</span>),<span style="color: #BF93C3;">%rax</span>        # <span style="color: #F6F3E8; font-weight: bold;">2004</span> &lt;_IO_stdin_used+0x4&gt;
+    <span style="color: #F6F3E8; font-weight: bold;">1309</span>:   <span style="color: #F6F3E8; font-weight: bold;">48</span> <span style="color: #F6F3E8; font-weight: bold;">89</span> c7                mov    <span style="color: #BF93C3;">%rax</span>,<span style="color: #BF93C3;">%rdi</span>
+    <span style="color: #8AC6F2;">130c</span>:   b8 <span style="color: #F6F3E8; font-weight: bold;">00</span> <span style="color: #F6F3E8; font-weight: bold;">00</span> <span style="color: #F6F3E8; font-weight: bold;">00</span> <span style="color: #F6F3E8; font-weight: bold;">00</span>          mov    $0x0,<span style="color: #BF93C3;">%eax</span>
+    <span style="color: #F6F3E8; font-weight: bold;">1311</span>:   e8 9a fd ff ff          callq  10b0 <a href="mailto:printf%40plt">&lt;printf@plt&gt;</a>
+    <span style="color: #F6F3E8; font-weight: bold;">1316</span>:   <span style="color: #F6F3E8; font-weight: bold;">48</span> 8d <span style="color: #F6F3E8; font-weight: bold;">05</span> <span style="color: #F6F3E8; font-weight: bold;">00</span> 0d <span style="color: #F6F3E8; font-weight: bold;">00</span> <span style="color: #F6F3E8; font-weight: bold;">00</span>    lea    0xd00(<span style="color: #BF93C3;">%rip</span>),<span style="color: #BF93C3;">%rax</span>        # 201d &lt;_IO_stdin_used+0x1d&gt;
+    <span style="color: #8AC6F2;">131d</span>:   <span style="color: #F6F3E8; font-weight: bold;">48</span> <span style="color: #F6F3E8; font-weight: bold;">89</span> c7                mov    <span style="color: #BF93C3;">%rax</span>,<span style="color: #BF93C3;">%rdi</span>
+    <span style="color: #F6F3E8; font-weight: bold;">1320</span>:   b8 <span style="color: #F6F3E8; font-weight: bold;">00</span> <span style="color: #F6F3E8; font-weight: bold;">00</span> <span style="color: #F6F3E8; font-weight: bold;">00</span> <span style="color: #F6F3E8; font-weight: bold;">00</span>          mov    $0x0,<span style="color: #BF93C3;">%eax</span>
+    <span style="color: #F6F3E8; font-weight: bold;">1325</span>:   e8 <span style="color: #F6F3E8; font-weight: bold;">86</span> fd ff ff          callq  10b0 <a href="mailto:printf%40plt">&lt;printf@plt&gt;</a>
+    <span style="color: #8AC6F2;">132a</span>:   e8 ba fe ff ff          callq  11e9 &lt;_Z8keypressv&gt;
+    <span style="color: #8AC6F2;">132f</span>:   b8 <span style="color: #F6F3E8; font-weight: bold;">00</span> <span style="color: #F6F3E8; font-weight: bold;">00</span> <span style="color: #F6F3E8; font-weight: bold;">00</span> <span style="color: #F6F3E8; font-weight: bold;">00</span>          mov    $0x0,<span style="color: #BF93C3;">%eax</span>
+    <span style="color: #F6F3E8; font-weight: bold;">1334</span>:   5d                      pop    <span style="color: #BF93C3;">%rbp</span>
+    <span style="color: #F6F3E8; font-weight: bold;">1335</span>:   c3                      retq   
+
+<span style="color: #EA9847;">Disassembly</span> <span style="color: #8AC6F2;">of</span> section .fini:
+</pre>
+</div>
+
+<p>
+It can be seen that what the program does is basically a call to <code>printf</code>.
+</p>
+</div>
+<div id="outline-container-org0f8dc26" class="outline-4">
+<h4 id="org0f8dc26"><span class="section-number-4">1.2.1.</span> <span class="todo TODO">TODO</span> What&rsquo;s the purpose of <code>lea 0xeac(%rip),%rax</code>?</h4>
+<div class="outline-text-4" id="text-1-2-1">
+<p>
+The LEA (Load Effective Address) instruction computes the effective address of a memory location and stores it in a register.
+</p>
+
+<p>
+Here, it&rsquo;s storing the address where the string &ldquo;Hello, world!&rdquo; resides into the <code>rax</code> register. From that register it will be copied onto the <code>rdi</code> register, which is the one that must hold the first argument to a function called (according to the calling convention).
+</p>
+
+<p>
+The address is expressed as an offset from the contents of the <code>rip</code> register (which is the instruction pointer). As it can be seen, the resulting address is <code>0x2004</code>, which equals <code>0x12dc + 0xd28</code> (the value of the <code>rip</code> register plus the offset <code>0xd28</code>).
+</p>
+
+<p>
+The section of the executable file where the string is stored is this:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-bash">readelf -x .rodata printfuth
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-nil">
+Hex dump of section '.rodata':
+  0x00002000 01000200 52756e6e 696e6720 6f6e2074 ....Running on t
+  0x00002010 65726d69 6e616c3a 2025730a 0048656c erminal: %s..Hel
+  0x00002020 6c6f2c20 776f726c 642100            lo, world!.
+
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org0159f8b" class="outline-4">
+<h4 id="org0159f8b"><span class="section-number-4">1.2.2.</span> <span class="todo TODO">TODO</span> How is the argument passed to <code>printf</code>?</h4>
+</div>
+</div>
+<div id="outline-container-org648ed5e" class="outline-3">
+<h3 id="org648ed5e"><span class="section-number-3">1.3.</span> <span class="todo TODO">TODO</span> Execution context</h3>
+<div class="outline-text-3" id="text-1-3">
+<p>
+The program is run by a shell, whose standard output is directed to a terminal window (a terminal emulator window, to be precise) on the screen.
+</p>
+</div>
+</div>
+<div id="outline-container-orgd29f70d" class="outline-3">
+<h3 id="orgd29f70d"><span class="section-number-3">1.4.</span> <span class="todo TODO">TODO</span> The system calls</h3>
+<div class="outline-text-3" id="text-1-4">
+<div class="org-src-container">
+<pre class="src src-bash">strace ./printfuth <span style="color: #F6F3E8; font-weight: bold;">2</span>&gt;&amp;<span style="color: #F6F3E8; font-weight: bold;">1</span> <span style="color: #F6F3E8; font-weight: bold;">1</span>&gt;/dev/null
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-C">execve<span style="color: #8AC6F2;">(</span><span style="color: #86B187;">"./printfuth"</span>, <span style="color: #E18Cbb;">[</span><span style="color: #86B187;">"./printfuth"</span><span style="color: #E18Cbb;">]</span>, <span style="color: #F6F3E8; font-weight: bold;">0x7ffe0dc7f340</span> <span style="color: #656868;">/* </span><span style="color: #656868;">98 vars</span><span style="color: #656868;"> */</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">0</span>
+brk<span style="color: #8AC6F2;">(</span><span style="color: #635770;">NULL</span><span style="color: #8AC6F2;">)</span>                               = <span style="color: #F6F3E8; font-weight: bold;">0x55f25d0f3000</span>
+arch_prctl<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">0x3001</span> <span style="color: #656868;">/* </span><span style="color: #656868;">ARCH_???</span><span style="color: #656868;"> */</span>, <span style="color: #F6F3E8; font-weight: bold;">0x7ffd8c9d5850</span><span style="color: #8AC6F2;">)</span> = -<span style="color: #F6F3E8; font-weight: bold;">1</span> <span style="color: #635770;">EINVAL</span> <span style="color: #8AC6F2;">(</span>Invalid argument<span style="color: #8AC6F2;">)</span>
+access<span style="color: #8AC6F2;">(</span><span style="color: #86B187;">"/etc/ld.so.preload"</span>, <span style="color: #635770;">R_OK</span><span style="color: #8AC6F2;">)</span>      = -<span style="color: #F6F3E8; font-weight: bold;">1</span> <span style="color: #635770;">ENOENT</span> <span style="color: #8AC6F2;">(</span>No such file or directory<span style="color: #8AC6F2;">)</span>
+<span style="color: #EA9847;">openat</span><span style="color: #8AC6F2;">(</span><span style="color: #635770;">AT_FDCWD</span>, <span style="color: #86B187;">"/etc/ld.so.cache"</span>, <span style="color: #635770;">O_RDONLY</span>|<span style="color: #635770;">O_CLOEXEC</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">3</span>
+fstat<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">3</span>, <span style="color: #E18Cbb;">{</span>st_mode=<span style="color: #635770;">S_IFREG</span>|<span style="color: #F6F3E8; font-weight: bold;">0644</span>, st_size=<span style="color: #F6F3E8; font-weight: bold;">210189</span>, ...<span style="color: #E18Cbb;">}</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">0</span>
+mmap<span style="color: #8AC6F2;">(</span><span style="color: #635770;">NULL</span>, <span style="color: #F6F3E8; font-weight: bold;">210189</span>, <span style="color: #635770;">PROT_READ</span>, <span style="color: #635770;">MAP_PRIVATE</span>, <span style="color: #F6F3E8; font-weight: bold;">3</span>, <span style="color: #F6F3E8; font-weight: bold;">0</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">0x7f3b1c04d000</span>
+close<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">3</span><span style="color: #8AC6F2;">)</span>                                = <span style="color: #F6F3E8; font-weight: bold;">0</span>
+openat<span style="color: #8AC6F2;">(</span><span style="color: #635770;">AT_FDCWD</span>, <span style="color: #86B187;">"/lib/x86_64-linux-gnu/libc.so.6"</span>, <span style="color: #635770;">O_RDONLY</span>|<span style="color: #635770;">O_CLOEXEC</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">3</span>
+read<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">3</span>, <span style="color: #86B187;">"\177ELF\2\1\1\3\0\0\0\0\0\0\0\0\3\0&gt;\0\1\0\0\0\300A\2\0\0\0\0\0"</span>..., <span style="color: #F6F3E8; font-weight: bold;">832</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">832</span>
+pread64<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">3</span>, <span style="color: #86B187;">"\6\0\0\0\4\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0"</span>..., <span style="color: #F6F3E8; font-weight: bold;">784</span>, <span style="color: #F6F3E8; font-weight: bold;">64</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">784</span>
+pread64<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">3</span>, <span style="color: #86B187;">"\4\0\0\0\20\0\0\0\5\0\0\0GNU\0\2\0\0\300\4\0\0\0\3\0\0\0\0\0\0\0"</span>, <span style="color: #F6F3E8; font-weight: bold;">32</span>, <span style="color: #F6F3E8; font-weight: bold;">848</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">32</span>
+pread64<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">3</span>, <span style="color: #86B187;">"\4\0\0\0\24\0\0\0\3\0\0\0GNU\0\7\2C\n\357_\243\335\2449\206V&gt;\237\374\304"</span>..., <span style="color: #F6F3E8; font-weight: bold;">68</span>, <span style="color: #F6F3E8; font-weight: bold;">880</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">68</span>
+fstat<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">3</span>, <span style="color: #E18Cbb;">{</span>st_mode=<span style="color: #635770;">S_IFREG</span>|<span style="color: #F6F3E8; font-weight: bold;">0755</span>, st_size=<span style="color: #F6F3E8; font-weight: bold;">2029592</span>, ...<span style="color: #E18Cbb;">}</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">0</span>
+mmap<span style="color: #8AC6F2;">(</span><span style="color: #635770;">NULL</span>, <span style="color: #F6F3E8; font-weight: bold;">8192</span>, <span style="color: #635770;">PROT_READ</span>|<span style="color: #635770;">PROT_WRITE</span>, <span style="color: #635770;">MAP_PRIVATE</span>|<span style="color: #635770;">MAP_ANONYMOUS</span>, -<span style="color: #F6F3E8; font-weight: bold;">1</span>, <span style="color: #F6F3E8; font-weight: bold;">0</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">0x7f3b1c04b000</span>
+pread64<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">3</span>, <span style="color: #86B187;">"\6\0\0\0\4\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0"</span>..., <span style="color: #F6F3E8; font-weight: bold;">784</span>, <span style="color: #F6F3E8; font-weight: bold;">64</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">784</span>
+pread64<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">3</span>, <span style="color: #86B187;">"\4\0\0\0\20\0\0\0\5\0\0\0GNU\0\2\0\0\300\4\0\0\0\3\0\0\0\0\0\0\0"</span>, <span style="color: #F6F3E8; font-weight: bold;">32</span>, <span style="color: #F6F3E8; font-weight: bold;">848</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">32</span>
+pread64<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">3</span>, <span style="color: #86B187;">"\4\0\0\0\24\0\0\0\3\0\0\0GNU\0\7\2C\n\357_\243\335\2449\206V&gt;\237\374\304"</span>..., <span style="color: #F6F3E8; font-weight: bold;">68</span>, <span style="color: #F6F3E8; font-weight: bold;">880</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">68</span>
+mmap<span style="color: #8AC6F2;">(</span><span style="color: #635770;">NULL</span>, <span style="color: #F6F3E8; font-weight: bold;">2037344</span>, <span style="color: #635770;">PROT_READ</span>, <span style="color: #635770;">MAP_PRIVATE</span>|<span style="color: #635770;">MAP_DENYWRITE</span>, <span style="color: #F6F3E8; font-weight: bold;">3</span>, <span style="color: #F6F3E8; font-weight: bold;">0</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">0x7f3b1be59000</span>
+mmap<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">0x7f3b1be7b000</span>, <span style="color: #F6F3E8; font-weight: bold;">1540096</span>, <span style="color: #635770;">PROT_READ</span>|<span style="color: #635770;">PROT_EXEC</span>, <span style="color: #635770;">MAP_PRIVATE</span>|<span style="color: #635770;">MAP_FIXED</span>|<span style="color: #635770;">MAP_DENYWRITE</span>, <span style="color: #F6F3E8; font-weight: bold;">3</span>, <span style="color: #F6F3E8; font-weight: bold;">0x22000</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">0x7f3b1be7b000</span>
+mmap<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">0x7f3b1bff3000</span>, <span style="color: #F6F3E8; font-weight: bold;">319488</span>, <span style="color: #635770;">PROT_READ</span>, <span style="color: #635770;">MAP_PRIVATE</span>|<span style="color: #635770;">MAP_FIXED</span>|<span style="color: #635770;">MAP_DENYWRITE</span>, <span style="color: #F6F3E8; font-weight: bold;">3</span>, <span style="color: #F6F3E8; font-weight: bold;">0x19a000</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">0x7f3b1bff3000</span>
+mmap<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">0x7f3b1c041000</span>, <span style="color: #F6F3E8; font-weight: bold;">24576</span>, <span style="color: #635770;">PROT_READ</span>|<span style="color: #635770;">PROT_WRITE</span>, <span style="color: #635770;">MAP_PRIVATE</span>|<span style="color: #635770;">MAP_FIXED</span>|<span style="color: #635770;">MAP_DENYWRITE</span>, <span style="color: #F6F3E8; font-weight: bold;">3</span>, <span style="color: #F6F3E8; font-weight: bold;">0x1e7000</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">0x7f3b1c041000</span>
+mmap<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">0x7f3b1c047000</span>, <span style="color: #F6F3E8; font-weight: bold;">13920</span>, <span style="color: #635770;">PROT_READ</span>|<span style="color: #635770;">PROT_WRITE</span>, <span style="color: #635770;">MAP_PRIVATE</span>|<span style="color: #635770;">MAP_FIXED</span>|<span style="color: #635770;">MAP_ANONYMOUS</span>, -<span style="color: #F6F3E8; font-weight: bold;">1</span>, <span style="color: #F6F3E8; font-weight: bold;">0</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">0x7f3b1c047000</span>
+close<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">3</span><span style="color: #8AC6F2;">)</span>                                = <span style="color: #F6F3E8; font-weight: bold;">0</span>
+arch_prctl<span style="color: #8AC6F2;">(</span><span style="color: #635770;">ARCH_SET_FS</span>, <span style="color: #F6F3E8; font-weight: bold;">0x7f3b1c04c540</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">0</span>
+mprotect<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">0x7f3b1c041000</span>, <span style="color: #F6F3E8; font-weight: bold;">16384</span>, <span style="color: #635770;">PROT_READ</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">0</span>
+mprotect<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">0x55f22e2df000</span>, <span style="color: #F6F3E8; font-weight: bold;">4096</span>, <span style="color: #635770;">PROT_READ</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">0</span>
+mprotect<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">0x7f3b1c0ae000</span>, <span style="color: #F6F3E8; font-weight: bold;">4096</span>, <span style="color: #635770;">PROT_READ</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">0</span>
+munmap<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">0x7f3b1c04d000</span>, <span style="color: #F6F3E8; font-weight: bold;">210189</span><span style="color: #8AC6F2;">)</span>          = <span style="color: #F6F3E8; font-weight: bold;">0</span>
+ioctl<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">0</span>, <span style="color: #635770;">TCGETS</span>, <span style="color: #F6F3E8; font-weight: bold;">0x7ffd8c9d5610</span><span style="color: #8AC6F2;">)</span>        = -<span style="color: #F6F3E8; font-weight: bold;">1</span> <span style="color: #635770;">ENOTTY</span> <span style="color: #8AC6F2;">(</span>Inappropriate ioctl <span style="color: #8AC6F2;">for</span> device<span style="color: #8AC6F2;">)</span>
+fstat<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">1</span>, <span style="color: #E18Cbb;">{</span>st_mode=<span style="color: #635770;">S_IFCHR</span>|<span style="color: #F6F3E8; font-weight: bold;">0666</span>, st_rdev=makedev<span style="color: #86B187;">(</span><span style="color: #F6F3E8; font-weight: bold;">0x1</span>, <span style="color: #F6F3E8; font-weight: bold;">0x3</span><span style="color: #86B187;">)</span>, ...<span style="color: #E18Cbb;">}</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">0</span>
+ioctl<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">1</span>, <span style="color: #635770;">TCGETS</span>, <span style="color: #F6F3E8; font-weight: bold;">0x7ffd8c9d4fe0</span><span style="color: #8AC6F2;">)</span>        = -<span style="color: #F6F3E8; font-weight: bold;">1</span> <span style="color: #635770;">ENOTTY</span> <span style="color: #8AC6F2;">(</span>Inappropriate ioctl <span style="color: #8AC6F2;">for</span> device<span style="color: #8AC6F2;">)</span>
+brk<span style="color: #8AC6F2;">(</span><span style="color: #635770;">NULL</span><span style="color: #8AC6F2;">)</span>                               = <span style="color: #F6F3E8; font-weight: bold;">0x55f25d0f3000</span>
+brk<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">0x55f25d114000</span><span style="color: #8AC6F2;">)</span>                     = <span style="color: #F6F3E8; font-weight: bold;">0x55f25d114000</span>
+ioctl<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">0</span>, <span style="color: #635770;">TCGETS</span>, <span style="color: #F6F3E8; font-weight: bold;">0x7ffd8c9d5740</span><span style="color: #8AC6F2;">)</span>        = -<span style="color: #F6F3E8; font-weight: bold;">1</span> <span style="color: #635770;">ENOTTY</span> <span style="color: #8AC6F2;">(</span>Inappropriate ioctl <span style="color: #8AC6F2;">for</span> device<span style="color: #8AC6F2;">)</span>
+write<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">1</span>, <span style="color: #86B187;">"Running on terminal: (null)\nHell"</span>..., <span style="color: #F6F3E8; font-weight: bold;">41</span><span style="color: #8AC6F2;">)</span> = <span style="color: #F6F3E8; font-weight: bold;">41</span>
+exit_group<span style="color: #8AC6F2;">(</span><span style="color: #F6F3E8; font-weight: bold;">0</span><span style="color: #8AC6F2;">)</span>                           = ?
++++ exited with <span style="color: #F6F3E8; font-weight: bold;">0</span> +++
+</pre>
+</div>
+
+<p>
+The key system call here is <code>write(1, "Hello, world!", 13)</code>.
+</p>
+
+<p>
+It writes to the file with descriptor 1, which is, by default, the standard output in Linux.
+</p>
+</div>
+</div>
+<div id="outline-container-org41c96c6" class="outline-3">
+<h3 id="org41c96c6"><span class="section-number-3">1.5.</span> Scheme</h3>
+<div class="outline-text-3" id="text-1-5">
+<p>
+Looks like this:
+</p>
+<ul class="org-ul">
+<li><code>printf</code> makes a <code>write</code> syscall.</li>
+<li><code>write</code> syscall writes the string to file with file descriptor 1, which is, by default, the <i>standard output</i>.</li>
+<li>The file descriptor 1 (<code>STDOUT</code>) is handled by a driver that controls a <i>device</i> which is a pseudoterminal (something like <code>/dev/pty/3</code>).</li>
+<li>The pseudoterminal is connected to a terminal emulator aplication (the one we are running the command from).</li>
+<li>The terminal emulator receives the characters and prints them onto its window.</li>
+</ul>
+
+<p>
+Still obscure parts:
+</p>
+<ul class="org-ul">
+<li>What does it mean that the file descriptor 1 is handled by a driver that controls a pseudoterminal device?</li>
+<li>How does the terminal emulator write characters on the window (how are shapes, sizes, etc., handled)?</li>
+<li>What are the details about how the pseudoterminal is connected to the terminal emulator?</li>
+<li>What processes are forked, exec&rsquo;ed or the like for all these things to happen?</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="author">Author: Manuel Pérez</p>
+<p class="date">Created: 2025-03-07 Fri 00:02</p>
+</div>
+</body>
+</html>

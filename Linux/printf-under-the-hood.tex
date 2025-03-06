@@ -1,0 +1,134 @@
+% Created 2025-03-06 Thu 23:59
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\author{Manuel Pérez}
+\date{\today}
+\title{Printf Under The Hood}
+\hypersetup{
+ pdfauthor={Manuel Pérez},
+ pdftitle={Printf Under The Hood},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.4 (Org mode 9.7.22)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{printf under the hood}
+\label{sec:org06c327e}
+
+\subsection{The program}
+\label{sec:org73ef93c}
+
+Will look into a really simple program that prints a text on a terminal and waits until a key is pressed:
+
+\begin{verbatim}
+sed -n 1~1p printfuth.cpp
+\end{verbatim}
+
+\begin{verbatim}
+#include <bits/posix_opt.h>
+#include <cstdio>
+#include <termios.h>
+#include <unistd.h>
+
+int keypress() {
+  struct termios saved_state, new_state;
+  int c;
+  if (tcgetattr(STDIN_FILENO, &saved_state) == -1) {
+    return EOF;
+  }
+  new_state = saved_state;
+  new_state.c_cflag &= ~(ICANON | ECHO);
+  new_state.c_cc[VMIN] = 1;
+  new_state.c_cc[VTIME] = 0;
+  if (tcsetattr(STDIN_FILENO, TCSANOW, &new_state) == -1) {
+    return EOF;
+  }
+  c = getchar();
+  tcsetattr(STDIN_FILENO, TCSANOW, &saved_state);
+  return c;
+}
+
+int main() {
+  std::printf("Running on terminal: %s\n", ttyname(STDIN_FILENO));
+  std::printf("Hello, world!");
+  keypress();
+  return 0;
+}
+\end{verbatim}
+\subsection{The assembler instructions}
+\label{sec:org11a8d25}
+
+First things, first. The program is compiled into this (assembler):
+
+\begin{verbatim}
+g++ -g printfuth.cpp -o printfuth
+objdump --disassemble=main printfuth > printfuth-disassemble
+sed -n 1~1p printfuth-disassemble
+\end{verbatim}
+
+It can be seen that what the program does is basically a call to \texttt{printf}.
+\subsubsection{{\bfseries\sffamily TODO} What's the purpose of \texttt{lea 0xeac(\%rip),\%rax}?}
+\label{sec:org90e3094}
+
+The LEA (Load Effective Address) instruction computes the effective address of a memory location and stores it in a register.
+
+Here, it's storing the address where the string ``Hello, world!'' resides into the \texttt{rax} register. From that register it will be copied onto the \texttt{rdi} register, which is the one that must hold the first argument to a function called (according to the calling convention).
+
+The address is expressed as an offset from the contents of the \texttt{rip} register (which is the instruction pointer). As it can be seen, the resulting address is \texttt{0x2004}, which equals \texttt{0x12dc + 0xd28} (the value of the \texttt{rip} register plus the offset \texttt{0xd28}).
+
+The section of the executable file where the string is stored is this:
+
+\begin{verbatim}
+readelf -x .rodata printfuth
+\end{verbatim}
+\subsubsection{{\bfseries\sffamily TODO} How is the argument passed to \texttt{printf}?}
+\label{sec:org176325c}
+\subsection{{\bfseries\sffamily TODO} Execution context}
+\label{sec:orga830c9c}
+
+The program is run by a shell, whose standard output is directed to a terminal window (a terminal emulator window, to be precise) on the screen.
+\subsection{{\bfseries\sffamily TODO} The system calls}
+\label{sec:org2057da0}
+
+\begin{verbatim}
+strace ./printfuth 2>&1 1>/dev/null
+\end{verbatim}
+
+The key system call here is \texttt{write(1, "Hello, world!", 13)}.
+
+It writes to the file with descriptor 1, which is, by default, the standard output in Linux.
+\subsection{Scheme}
+\label{sec:org51dbd2b}
+
+Looks like this:
+\begin{itemize}
+\item \texttt{printf} makes a \texttt{write} syscall.
+\item \texttt{write} syscall writes the string to file with file descriptor 1, which is, by default, the \emph{standard output}.
+\item The file descriptor 1 (\texttt{STDOUT}) is handled by a driver that controls a \emph{device} which is a pseudoterminal (something like \texttt{/dev/pty/3}).
+\item The pseudoterminal is connected to a terminal emulator aplication (the one we are running the command from).
+\item The terminal emulator receives the characters and prints them onto its window.
+\end{itemize}
+
+Still obscure parts:
+\begin{itemize}
+\item What does it mean that the file descriptor 1 is handled by a driver that controls a pseudoterminal device?
+\item How does the terminal emulator write characters on the window (how are shapes, sizes, etc., handled)?
+\item What are the details about how the pseudoterminal is connected to the terminal emulator?
+\item What processes are forked, exec'ed or the like for all these things to happen?
+\end{itemize}
+\end{document}
